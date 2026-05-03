@@ -394,6 +394,80 @@
       #weaponScroll { max-height: 184px; }
       .weapon { height: 66px; }
     }
+
+
+    /* v8 top tab balance: three buttons fill the entire row evenly */
+    .top-ui .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      align-items: stretch;
+      gap: 7px;
+      width: 100%;
+    }
+    .top-ui .row .pill,
+    .top-ui .row .btn-pill {
+      width: 100%;
+      min-width: 0;
+      height: 40px;
+      padding-left: 7px;
+      padding-right: 7px;
+      font-size: 12px;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+    #coinPill {
+      justify-content: center;
+    }
+    .top-ui .pill.fill {
+      flex: none;
+      max-width: none;
+      justify-content: center;
+      gap: 4px;
+    }
+    .top-ui .pill.fill { font-size: 0; }
+    #weaponText {
+      display: inline-block;
+      max-width: 88px;
+      font-size: 12px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    #upgradeBtn {
+      flex: none;
+      min-width: 0;
+      justify-content: center;
+      font-size: 13px;
+    }
+    #panel {
+      transition: transform .18s ease, padding .18s ease, opacity .18s ease;
+    }
+    #panel.collapsed #weaponScroll {
+      max-height: 76px;
+      overflow-y: hidden;
+    }
+    #panel.expanded #weaponScroll {
+      max-height: 214px;
+      overflow-y: auto;
+    }
+    #panel.collapsed #panelHead {
+      margin-bottom: 6px;
+    }
+    #panel.collapsed .weapon {
+      height: 64px;
+    }
+    #panel.expanded .weapon {
+      height: 72px;
+    }
+    #panel.collapsed #unlockHint::after {
+      content: ' · 탭하면 펼침';
+    }
+    @media (max-height: 740px) {
+      #panel.collapsed #weaponScroll { max-height: 68px; }
+      #panel.expanded #weaponScroll { max-height: 180px; }
+      #panel.collapsed .weapon { height: 58px; }
+    }
   </style>
 </head>
 <body>
@@ -1856,6 +1930,74 @@
       }
     };
 
+
+
+    /* v7 balance and UX fixes */
+    (function applyV7Tweaks(){
+      // 후반 무기는 코인은 많이 주되 멘탈을 너무 빨리 바닥내지 않도록 데미지 조정
+      const balance = {
+        shotgun:  { damage: 10, coins: 11, interval: 420 },
+        grenade:  { damage: 16, coins: 14 },
+        meteor:   { damage: 20, coins: 20 },
+        tnt:      { damage: 21, coins: 23 },
+        darkmagic:{ damage: 21, coins: 27 },
+        lightning:{ damage: 22, coins: 34 },
+        watergun: { damage: 2,  coins: 1, interval: 70 },
+        laser:    { damage: 3,  coins: 4, interval: 85 }
+      };
+      for (const [id, patch] of Object.entries(balance)) {
+        if (byId[id]) Object.assign(byId[id], patch);
+      }
+
+      // 강화 가격 완만하게 조정
+      const cheaper = {
+        coin:      { base: 70,  scale: 1.12 },
+        recover:   { base: 85,  scale: 1.12 },
+        maxMental: { base: 100, scale: 1.13 }
+      };
+      for (const def of upgradeDefs) {
+        if (cheaper[def.id]) Object.assign(def, cheaper[def.id]);
+      }
+
+      const panelEl = document.getElementById('panel');
+      function expandWeaponPanel(){
+        panelEl.classList.remove('collapsed');
+        panelEl.classList.add('expanded');
+      }
+      function collapseWeaponPanel(){
+        panelEl.classList.remove('expanded');
+        panelEl.classList.add('collapsed');
+      }
+      window.expandWeaponPanel = expandWeaponPanel;
+      window.collapseWeaponPanel = collapseWeaponPanel;
+      collapseWeaponPanel();
+
+      panelEl.addEventListener('pointerdown', (e) => {
+        expandWeaponPanel();
+        e.stopPropagation();
+      }, { passive: true });
+
+      const oldSelectWeaponV7 = selectWeapon;
+      selectWeapon = function(id) {
+        expandWeaponPanel();
+        oldSelectWeaponV7(id);
+      };
+
+      const oldPointerStartV7 = pointerStart;
+      pointerStart = function(x, y) {
+        if (state.started && y < H - UI_BOTTOM + 18) collapseWeaponPanel();
+        oldPointerStartV7(x, y);
+      };
+
+      // 샷건은 한 번에 여러 펠릿이 다 맞아 과하게 강해지는 것을 약하게 보정
+      const oldUpdateActiveToolV7 = updateActiveTool;
+      updateActiveTool = function() {
+        oldUpdateActiveToolV7();
+      };
+
+      // 강화창 렌더링 즉시 최신 가격 반영
+      renderUpgrades();
+    })();
     loadSave();
     buildWeapons();
     updateUI();
