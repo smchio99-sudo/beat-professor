@@ -367,6 +367,28 @@
     #eggSubmit { background: linear-gradient(180deg, #fde68a, #f59e0b); color: #3b2600; }
     #eggClose { background: #111827; color: white; }
 
+
+    #bgmBtn {
+      position: absolute;
+      right: max(10px, env(safe-area-inset-right));
+      top: max(104px, env(safe-area-inset-top));
+      z-index: 14;
+      width: 42px;
+      height: 42px;
+      border: 2px solid rgba(255,255,255,.75);
+      border-radius: 999px;
+      background: rgba(16,19,29,.78);
+      color: white;
+      font-size: 20px;
+      font-weight: 900;
+      box-shadow: 0 7px 18px rgba(0,0,0,.25);
+      backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #bgmBtn:active { transform: translateY(2px) scale(.96); }
+
     @media (max-height: 740px) {
       #speechBubble { top: 96px; font-size: 16px; }
       #weaponScroll { max-height: 184px; }
@@ -377,6 +399,9 @@
 <body>
   <div id="app">
     <canvas id="game" width="430" height="932"></canvas>
+
+    <audio id="bgm" src="./bgm.mp3" loop preload="auto"></audio>
+    <button id="bgmBtn" type="button" aria-label="배경음악 켜기/끄기">🔊</button>
 
     <div class="top-ui">
       <div class="row">
@@ -455,6 +480,38 @@
     const eggInput = document.getElementById('eggInput');
     const eggSubmit = document.getElementById('eggSubmit');
     const eggClose = document.getElementById('eggClose');
+
+    const bgm = document.getElementById('bgm');
+    const bgmBtn = document.getElementById('bgmBtn');
+    let bgmOn = localStorage.getItem('professor_bgm_on') !== 'false';
+
+    function updateBgmButton() {
+      bgmBtn.textContent = bgmOn ? '🔊' : '🔇';
+      bgmBtn.title = bgmOn ? 'BGM 끄기' : 'BGM 켜기';
+    }
+
+    async function playBgm() {
+      if (!bgmOn) return;
+      bgm.volume = 0.45;
+      try {
+        await bgm.play();
+      } catch (e) {
+        // 모바일 브라우저는 사용자가 화면을 한 번 터치해야 음악 재생이 허용됩니다.
+      }
+    }
+
+    function toggleBgm(e) {
+      if (e) e.stopPropagation();
+      bgmOn = !bgmOn;
+      localStorage.setItem('professor_bgm_on', String(bgmOn));
+      if (bgmOn) playBgm();
+      else bgm.pause();
+      updateBgmButton();
+    }
+
+    bgmBtn.addEventListener('click', toggleBgm);
+    document.addEventListener('pointerdown', playBgm, { once: true });
+    updateBgmButton();
 
     const W = 430;
     const H = 932;
@@ -1555,6 +1612,7 @@
       state.started = true;
       startScreen.classList.add('hide');
       showBubble('수업 시작한다. 집중해라!');
+      playBgm();
     }
 
     document.getElementById('startBtn').addEventListener('click', startGame);
